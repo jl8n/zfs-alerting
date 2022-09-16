@@ -32,27 +32,12 @@ def parse_config(data):
 
 
 def notify(title: str, msg: str, priority: int):
-    print(msg)
-
-    with open('last_alert.yaml') as f:
-        last_alert = yaml.load(f, Loader=yaml.FullLoader)
-
-    if abs(last_alert['time'] - time()) >= 60 * 60 * ALERT_FREQ:
-        # last message was at least 6 hours ago
-        GOTIFY.create_message(
-            msg,
-            title=title,
-            priority=priority,
-        )
-
-        # only update last_alert.yaml if alert was sent
-        last_alert['title'] = title
-        last_alert['message'] = msg
-        last_alert['priority'] = priority
-        last_alert['time'] = time()  # update last time
-
-    with open('last_alert.yaml', 'w') as file:
-        yaml.dump(last_alert, file)
+    print(msg, time())
+    GOTIFY.create_message(
+        msg,
+        title=title,
+        priority=priority,
+    )
 
 
 def main():
