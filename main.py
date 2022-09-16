@@ -7,12 +7,14 @@ from time import time
 from gotify import Gotify
 
 ALERT_FREQ = 6  # hours
+
+# TODO move to gitsecret - not a big deal now since Gotify runs on a local IP
 GOTIFY = Gotify(
     base_url='http://192.168.1.103:8070',
     app_token='A1.8rb02h3a4nJO',
 )
 
-output = output = subprocess.run(['zpool', 'status'], capture_output=True)
+output = subprocess.run(['zpool', 'status'], capture_output=True).stdout.decode('utf-8')
 
 
 def parse_data(data):
