@@ -1,0 +1,11 @@
+{
+    "[python]": {
+        "editor.formatOnPaste": false
+    },
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+        "--skip-string-normalization",
+        "--line-length",
+        "100"
+    ]
+}

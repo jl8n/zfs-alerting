@@ -1,37 +1,25 @@
 from multiprocessing import pool
 import subprocess
 import re
+import yaml
 from pprint import pprint
+from time import time
+from gotify import Gotify
 
+ALERT_FREQ = 6  # hours
+GOTIFY = Gotify(
+    base_url='http://192.168.1.103:8070',
+    app_token='A1.8rb02h3a4nJO',
+)
 
-output = """  pool: tank
- state: DEGRADED
-status: One or more devices are faulted in response to persistent errors.
-        Sufficient replicas exist for the pool to continue functioning in a
-        degraded state.
-action: Replace the faulted device, or use 'zpool clear' to mark the device
-        repaired.
-  scan: resilvered 35.6G in 00:08:47 with 0 errors on Sat Sep 10 01:20:26 2022
-config:
-
-        NAME        STATE     READ WRITE CKSUM
-        tank        DEGRADED     0     0     0
-          raidz2-0  DEGRADED     0     0     0
-            sda     ONLINE       0     0     0
-            sdc     FAULTED     33     0     0  too many errors
-            sdb     ONLINE       0     0     0
-            sdd     ONLINE       0     0     0
-            sdf     ONLINE       0     0     0
-
-errors: No known data errors
-"""
+output = output = subprocess.run(['zpool', 'status'], capture_output=True)
 
 
 def parse_data(data):
-    parts = re.split(r"(?:\n|^)\s*(\w*):\s*", data.strip(), re.MULTILINE)[1:]
+    parts = re.split(r'(?:\n|^)\s*(\w*):\s*', data.strip(), re.MULTILINE)[1:]
     parsed = dict(zip(parts[::2], parts[1::2]))
     return parsed
-    # return {**parsed, "config": parse_config(parsed.get("config", ""))}
+    # return {**parsed, 'config': parse_config(parsed.get('config', ''))}
 
 
 def parse_config(data):
@@ -41,21 +29,42 @@ def parse_config(data):
     return []
 
 
+def notify(title: str, msg: str, priority: int):
+    print(msg)
+
+    with open('last_alert.yaml') as f:
+        last_alert = yaml.load(f, Loader=yaml.FullLoader)
+
+    if abs(last_alert['time'] - time()) >= 60 * 60 * ALERT_FREQ:
+        # last message was at least 6 hours ago
+        GOTIFY.create_message(
+            msg,
+            title=title,
+            priority=priority,
+        )
+
+        # only update last_alert.yaml if alert was sent
+        last_alert['title'] = title
+        last_alert['message'] = msg
+        last_alert['priority'] = priority
+        last_alert['time'] = time()  # update last time
+
+    with open('last_alert.yaml', 'w') as file:
+        yaml.dump(last_alert, file)
+
+
 def main():
     zpool: dict = parse_data(output)
-    pool: str = zpool["pool"]
-    status: str = zpool["status"].replace("\n", " ").replace("  ", "")
+    pool: str = zpool['pool']
+    status: str = zpool['status'].replace('\n', ' ').replace('  ', '')
     # status = [i for i in range(100) if i % 2 == 0]
 
-    match zpool["state"]:
-        case "DEGRADED":
-            print(f"Pool `{pool}` is DEGRADED")
-        case "FAULTED":
-            print(f"Pool `{pool}` has FAULTED")
+    match zpool['state']:
+        case 'DEGRADED':
+            notify('Warning!', f'Pool {pool} is DEGRADED', 9)
+        case 'FAULTED':
+            notify('Warning!', f'Pool {pool} has FAULTED', 9)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
-
-
-# pprint.pprint(d)
